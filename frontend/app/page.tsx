@@ -1,18 +1,17 @@
 'use client';
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { Send, Loader2, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, Shield, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 
 export default function Home() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("You are a helpful assistant.");
   const [userPrompt, setUserPrompt] = useState("How do I make a cake?");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
-    // const newSocket = io("http://localhost:3001");
-    const socketUrl ="https://prompt-detection-backend.onrender.com/";
+    const socketUrl = "https://prompt-detection-backend.onrender.com/";
     const newSocket = io(socketUrl);
     setSocket(newSocket);
 
@@ -31,9 +30,7 @@ export default function Home() {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = () => {
     if (!socket || !socket.connected) {
       alert("Socket not connected!");
       return;
@@ -48,81 +45,188 @@ export default function Home() {
     });
   };
 
+  const extractSeverity = (label: string) => {
+    // Extract the range like "5-10" from "High-Critical (5-10)"
+    const match = label?.match(/\((\d+)-(\d+)\)/);
+    if (match) {
+      // Return the upper bound of the range
+      return parseFloat(match[2]);
+    }
+    return 0;
+  };
+
+  const getSeverityInfo = (label: string) => {
+    const lowerLabel = label?.toLowerCase() || '';
+    
+    // Check for specific keywords in the label
+    if (lowerLabel.includes('high') || lowerLabel.includes('critical')) {
+      return {
+        level: 'High Risk',
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        icon: AlertCircle,
+        description: 'This prompt contains potentially harmful content.'
+      };
+    }
+    if (lowerLabel.includes('moderate') || lowerLabel.includes('medium')) {
+      return {
+        level: 'Moderate Risk',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-200',
+        icon: AlertTriangle,
+        description: 'This prompt may require attention.'
+      };
+    }
+    return {
+      level: 'Low Risk',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200',
+      icon: CheckCircle2,
+      description: 'This prompt appears safe and benign.'
+    };
+  };
+
+  const severity = result ? extractSeverity(result.label) : 0;
+  const severityInfo = result ? getSeverityInfo(result.label) : getSeverityInfo('');
+  const SeverityIcon = severityInfo.icon;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="mb-10">
-          <h1 className="text-4xl font-light text-slate-800 mb-2">
-            Prompt Classification
+        <div className="text-center mb-12">
+          
+          <h1 className="text-5xl font-bold text-gray-900 mb-2">
+            Prompt Vulnerability Detector
           </h1>
-          <p className="text-slate-500 text-sm">
-            Analyze and classify your prompts in real-time
+          <p className="text-gray-600 text-lg">
+           
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Input Section */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* System Prompt */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <label className="block text-sm font-medium text-slate-700 mb-3">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               System Prompt
             </label>
             <textarea 
               value={systemPrompt} 
               onChange={(e) => setSystemPrompt(e.target.value)} 
-              className="w-full px-4 py-3 text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
-              rows={3}
+              className="w-full px-4 py-3 text-gray-800 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none placeholder-gray-400"
+              rows={6}
               placeholder="Enter system prompt..."
             />
           </div>
 
           {/* User Prompt */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <label className="block text-sm font-medium text-slate-700 mb-3">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
               User Prompt
             </label>
             <textarea 
               value={userPrompt} 
               onChange={(e) => setUserPrompt(e.target.value)} 
-              className="w-full px-4 py-3 text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
-              rows={4}
+              className="w-full px-4 py-3 text-gray-800 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none placeholder-gray-400"
+              rows={6}
               placeholder="Enter user prompt..."
             />
           </div>
+        </div>
 
-          {/* Submit Button */}
+        {/* Submit Button */}
+        <div className="flex justify-center mb-8">
           <button 
-            type="submit" 
+            onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white font-medium py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-sm"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-12 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 disabled:hover:scale-100"
           >
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Classifying...
+                Analyzing...
               </>
             ) : (
               <>
                 <Send className="w-5 h-5" />
-                Classify Prompt
+                Analyze Prompt
               </>
             )}
           </button>
-        </form>
+        </div>
 
         {/* Result */}
         {result && (
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex items-center gap-2 mb-4">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-medium text-slate-800">
-                Classification Result
-              </h3>
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Header Bar */}
+            <div className={`${severityInfo.bgColor} ${severityInfo.borderColor} border-b px-8 py-6`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 ${severityInfo.bgColor} rounded-xl border-2 ${severityInfo.borderColor}`}>
+                    <SeverityIcon className={`w-8 h-8 ${severityInfo.color}`} />
+                  </div>
+                  <div>
+                    <h3 className={`text-2xl font-bold ${severityInfo.color}`}>
+                      {severityInfo.level}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {severityInfo.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500 mb-1">Severity Score</div>
+                  <div className={`text-4xl font-bold ${severityInfo.color}`}>
+                    {severity.toFixed(1)}
+                  </div>
+                </div>
+              </div>
             </div>
-            <pre className="bg-slate-50 text-slate-800 p-4 rounded-lg text-sm overflow-x-auto border border-slate-200 font-mono">
-              {JSON.stringify(result, null, 2)}
-            </pre>
+
+            {/* Details Section */}
+            <div className="p-8">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Classification */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                  <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Classification
+                  </div>
+                  <div className="text-xl font-bold text-gray-900">
+                    {result.label}
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                  <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Analysis Status
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <span className="text-xl font-bold text-gray-900">Complete</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Raw Response */}
+              <div className="mt-6">
+                <details className="group">
+                  <summary className="cursor-pointer text-gray-700 font-semibold mb-3 hover:text-gray-900 transition-colors flex items-center gap-2 select-none">
+                    <span className="group-open:rotate-90 transition-transform text-gray-400">▶</span>
+                    View Technical Details
+                  </summary>
+                  <div className="bg-gray-900 text-gray-100 p-6 rounded-xl text-sm overflow-x-auto border border-gray-300">
+                    <pre className="font-mono">{JSON.stringify(result, null, 2)}</pre>
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
         )}
       </div>
